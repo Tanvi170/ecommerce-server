@@ -2,7 +2,7 @@ require('dotenv').config(); // Load environment variables
 
 const express = require('express');
 const router = express.Router();
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
 
 // Create MySQL connection pool using environment variables (for Render)
