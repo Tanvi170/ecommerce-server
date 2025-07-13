@@ -121,22 +121,22 @@ router.post('/add', authenticateToken, upload.single('image'), async (req, res) 
   const { store_id } = req.user;
 
   const image_url = req.file ? `uploads/${req.file.filename}` : null;
+const query = `
+  INSERT INTO products
+  (product_name, store_id, description, price, stock_quantity, image_url, product_category)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`;
 
-  const query = `
-    INSERT INTO products
-    (product_name, price, product_category, description, stock_quantity, image_url, store_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
+const values = [
+  product_name,
+  store_id,
+  description,
+  price,
+  stock_quantity,
+  image_url,
+  product_category,
+];
 
-  const values = [
-    product_name,
-    price,
-    product_category,
-    description,
-    stock_quantity,
-    image_url,
-    store_id
-  ];
 
   try {
     await pool.query(query, values);
