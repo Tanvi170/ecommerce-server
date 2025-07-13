@@ -5,13 +5,16 @@ const router = express.Router();
 const mysql = require('mysql2');
 const jwt = require('jsonwebtoken');
 
-// MySQL DB connection using environment variables (for Render)
-const db = mysql.createConnection({
+// Create MySQL connection pool using environment variables (for Render)
+const pool = mysql.createPool({
   host: process.env.MYSQL_ADDON_HOST,
   user: process.env.MYSQL_ADDON_USER,
   password: process.env.MYSQL_ADDON_PASSWORD,
   database: process.env.MYSQL_ADDON_DB,
-  port: process.env.MYSQL_ADDON_PORT || 3306
+  port: process.env.MYSQL_ADDON_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,  // adjust as needed
+  queueLimit: 0
 });
 
 // Middleware to verify JWT and attach user info
@@ -52,7 +55,8 @@ router.get('/', authenticateToken, (req, res) => {
     ORDER BY f.review_date DESC
   `;
 
-  db.query(sql, [store_id], (err, results) => {
+  // Use pool.query instead of db.query
+  pool.query(sql, [store_id], (err, results) => {
     if (err) {
       console.error('Error fetching feedback:', err);
       return res.status(500).json({ error: 'Internal server error' });

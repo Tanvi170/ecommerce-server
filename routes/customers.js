@@ -2,19 +2,22 @@ require('dotenv').config(); // Load environment variables
 
 const express = require('express');
 const router = express.Router();
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
 
-// MySQL DB connection using .env for Render compatibility
-const db = mysql.createConnection({
-  host: process.env.MYSQL_ADDON_HOST,
-  user: process.env.MYSQL_ADDON_USER,
-  password: process.env.MYSQL_ADDON_PASSWORD,
-  database: process.env.MYSQL_ADDON_DB,
-  port: process.env.MYSQL_ADDON_PORT || 3306
+// ✅ MySQL connection pool
+const pool = mysql.createPool({
+  host: process.env.MYSQL_ADDON_HOST || 'localhost',
+  user: process.env.MYSQL_ADDON_USER || 'root',
+  password: process.env.MYSQL_ADDON_PASSWORD || '',
+  database: process.env.MYSQL_ADDON_DB || 'e-commerce-db',
+  port: process.env.MYSQL_ADDON_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
-// Middleware to verify JWT and attach user info
+// ✅ Middleware to verify JWT and attach user info
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Format: Bearer <token>
@@ -29,8 +32,8 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// GET /api/customers
-router.get('/', authenticateToken, (req, res) => {
+// ✅ GET /api/customers
+router.get('/', authenticateToken, async (req, res) => {
   const { store_id, user_type } = req.user;
 
   if (user_type !== 'shop_owner') {
@@ -54,18 +57,17 @@ router.get('/', authenticateToken, (req, res) => {
     ORDER BY c.date_joined DESC;
   `;
 
-  db.query(sql, [store_id], (err, results) => {
-    if (err) {
-      console.error('Error fetching customer data:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-
+  try {
+    const [results] = await pool.query(sql, [store_id]);
     res.json(results);
-  });
+  } catch (err) {
+    console.error('❌ Error fetching customer data:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-// POST /api/customers/add
-router.post('/add', authenticateToken, (req, res) => {
+// ✅ POST /api/customers/add
+router.post('/add', authenticateToken, async (req, res) => {
   const { store_id } = req.user;
   const { customer_name, email, phone_number, address, password } = req.body;
 
@@ -80,18 +82,17 @@ router.post('/add', authenticateToken, (req, res) => {
 
   const values = [customer_name, email, phone_number, address, password, store_id];
 
-  db.query(sql, values, (err, result) => {
-    if (err) {
-      console.error('Error inserting customer:', err);
-      return res.status(500).json({ error: 'Database insert failed' });
-    }
-
+  try {
+    const [result] = await pool.query(sql, values);
     res.status(201).json({ message: 'Customer added successfully' });
-  });
+  } catch (err) {
+    console.error('❌ Error inserting customer:', err);
+    res.status(500).json({ error: 'Database insert failed' });
+  }
 });
 
-// GET /api/customers/:id - Get single customer details
-router.get('/:id', authenticateToken, (req, res) => {
+// ✅ GET /api/customers/:id
+router.get('/:id', authenticateToken, async (req, res) => {
   const customerId = req.params.id;
 
   const sql = `
@@ -100,18 +101,18 @@ router.get('/:id', authenticateToken, (req, res) => {
     WHERE customer_id = ?
   `;
 
-  db.query(sql, [customerId], (err, results) => {
-    if (err) {
-      console.error('Error fetching customer:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
+  try {
+    const [results] = await pool.query(sql, [customerId]);
 
     if (results.length === 0) {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
     res.json(results[0]);
-  });
+  } catch (err) {
+    console.error('❌ Error fetching customer:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
