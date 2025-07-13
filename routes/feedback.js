@@ -5,7 +5,7 @@ const router = express.Router();
 const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
 
-// Create MySQL connection pool using environment variables (for Render)
+// ✅ MySQL connection pool (Render-compatible)
 const pool = mysql.createPool({
   host: process.env.MYSQL_ADDON_HOST,
   user: process.env.MYSQL_ADDON_USER,
@@ -13,11 +13,11 @@ const pool = mysql.createPool({
   database: process.env.MYSQL_ADDON_DB,
   port: process.env.MYSQL_ADDON_PORT || 3306,
   waitForConnections: true,
-  connectionLimit: 10,  // adjust as needed
+  connectionLimit: 10,
   queueLimit: 0
 });
 
-// Middleware to verify JWT and attach user info
+// ✅ Middleware to verify JWT and attach user info
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Format: Bearer <token>
@@ -32,8 +32,8 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// GET /api/feedback - fetch feedback for shop owner's store
-router.get('/', authenticateToken, (req, res) => {
+// ✅ GET /api/feedback - fetch feedback for shop owner's store
+router.get('/', authenticateToken, async (req, res) => {
   const { store_id, user_type } = req.user;
 
   if (user_type !== 'shop_owner') {
@@ -55,15 +55,13 @@ router.get('/', authenticateToken, (req, res) => {
     ORDER BY f.review_date DESC
   `;
 
-  // Use pool.query instead of db.query
-  pool.query(sql, [store_id], (err, results) => {
-    if (err) {
-      console.error('Error fetching feedback:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-
+  try {
+    const [results] = await pool.query(sql, [store_id]);
     res.json(results);
-  });
+  } catch (err) {
+    console.error('🔴 Error fetching feedback:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;

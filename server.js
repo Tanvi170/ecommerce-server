@@ -17,12 +17,17 @@ const customerAuthRoutes = require('./routes/cus_auth');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// ✅ CORS setup with explicit origin (important for Render)
+app.use(cors({
+  origin: ['https://ecommerce-client-2au9.onrender.com'], // Frontend domain
+  credentials: true, // Allow cookies and tokens
+}));
+
+// ✅ Middleware
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
+// ✅ Routes
 app.use('/api/products', productsRoute);
 app.use('/api/customers', customerRoute);
 app.use('/api/orders', ordersRoute);
@@ -34,12 +39,12 @@ app.use('/api/overview', overview);
 app.use('/api/customer/auth', customerAuthRoutes);
 app.use('/api', stores_backup);
 
-// Test route
+// ✅ Health check route
 app.get('/', (req, res) => {
   res.send('✅ Server is up and running on Render!');
 });
 
-// Start server
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
